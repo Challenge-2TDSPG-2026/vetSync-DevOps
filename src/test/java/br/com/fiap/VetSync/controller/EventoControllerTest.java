@@ -1,0 +1,132 @@
+package br.com.fiap.VetSync.controller;
+
+import br.com.fiap.VetSync.entity.*;
+import br.com.fiap.VetSync.service.EventoService;
+import br.com.fiap.VetSync.service.PetService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.web.servlet.MockMvc;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+class EventoControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @MockBean
+    private EventoService eventoService;
+
+    @MockBean
+    private PetService petService;
+
+    @Test
+    @DisplayName("POST /eventos - Agendar com sucesso por TUTOR proprietário")
+    @WithMockUser(username = "tutor@teste.com", roles = "TUTOR")
+    void agendar_Sucesso() throws Exception {
+        Tutor tutor = Tutor.builder().dsEmail("tutor@teste.com").build();
+        Pet pet = Pet.builder().idPet(1L).tutor(tutor).build();
+        TipoEvento tipo = TipoEvento.builder().idTipoEvento(2L).nmTipoEvento("Vacina").build();
+        Veterinario vet = Veterinario.builder().idVeterinario(3L).nmVeterinario("Dr. V").build();
+
+        when(petService.buscarPorId(1L)).thenReturn(pet);
+
+        EventoSaude eventoCriado = EventoSaude.builder()
+                .idEvento(100L)
+                .pet(pet)
+                .tipoEvento(tipo)
+                .veterinario(vet)
+                .dtEvento(LocalDate.now().plusDays(2))
+                .hrEvento("14:30")
+                .dsStatus(StatusEvento.AGENDADO)
+                .build();
+
+        when(eventoService.agendar(any(), eq(1L), eq(2L), eq(3L))).thenReturn(eventoCriado);
+
+        var req = new EventoController.EventoAgendarRequest(1L, 2L, 3L, LocalDate.now().plusDays(2), "14:30", "Obs");
+
+        mockMvc.perform(post("/eventos")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.idEvento").value(100))
+                .andExpect(jsonPath("$.status").value("AGENDADO"))
+                .andExpect(jsonPath("$.nmTipoEvento").value("Vacina"));
+    }
+
+    @Test
+    @DisplayName("POST /eventos - Falha com 403 se tutor tentar agendar para pet que não é dele")
+    @WithMockUser(username = "outro_tutor@teste.com", roles = "TUTOR")
+    void agendar_PetNaoPertenceAoTutor() throws Exception {
+        Tutor dono = Tutor.builder().dsEmail("dono@teste.com").build();
+        Pet pet = Pet.builder().idPet(1L).tutor(dono).build();
+
+        when(petService.buscarPorId(1L)).thenReturn(pet);
+
+        var req = new EventoController.EventoAgendarRequest(1L, 2L, 3L, LocalDate.now().plusDays(2), "14:30", "Obs");
+
+        mockMvc.perform(post("/eventos")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.mensagem").value("Esse pet não pertence a você"));
+    }
+
+    @Test
+    @DisplayName("GET /eventos - Listar eventos do tutor")
+    @WithMockUser(username = "tutor@teste.com", roles = "TUTOR")
+    void listar_Tutor() throws Exception {
+        TipoEvento tipo = TipoEvento.builder().nmTipoEvento("Banho").build();
+        EventoSaude ev = EventoSaude.builder().idEvento(10L).tipoEvento(tipo).dsStatus(StatusEvento.AGENDADO).build();
+        when(eventoService.listarParaTutor("tutor@teste.com")).thenReturn(List.of(ev));
+
+        mockMvc.perform(get("/eventos"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].idEvento").value(10))
+                .andExpect(jsonPath("$[0].nmTipoEvento").value("Banho"));
+    }
+
+    @Test
+    @DisplayName("GET /eventos/pet/{idPet}/gasto-total - Retorna total gasto")
+    @WithMockUser(roles = "TUTOR")
+    void gastoTotal_Sucesso() throws Exception {
+        when(eventoService.calcularGastoTotal(1L)).thenReturn(new BigDecimal("250.00"));
+
+        mockMvc.perform(get("/eventos/pet/1/gasto-total"))
+                .andExpect(status().isOk())
+                .andExpect(content().string("250.00"));
+    }
+
+    @Test
+    @DisplayName("GET /eventos/pet/{idPet}/alertas - Retorna lista de alertas")
+    @WithMockUser(roles = "TUTOR")
+    void alertas_Sucesso() throws Exception {
+        var alerta = new EventoService.AlertaEvento("Vacina", LocalDate.now().minusMonths(13), 13, true, "Atrasado");
+        when(eventoService.gerarAlertas(1L)).thenReturn(List.of(alerta));
+
+        mockMvc.perform(get("/eventos/pet/1/alertas"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].nmTipoEvento").value("Vacina"))
+                .andExpect(jsonPath("$[0].atrasado").value(true));
+    }
+}
