@@ -61,7 +61,7 @@ Fluxo de publicação:
 
 O diagrama abaixo apresenta as personas, os componentes da aplicação, os recursos Azure, as relações entre App Service Plan, App Service, SQL Server, Azure SQL Database e Key Vault, além do fluxo de acesso à API.
 
-![Diagrama de arquitetura e infraestrutura do VetSync](docs/images/DevOps-S2Spr3.drawio.svg)
+![Diagrama de arquitetura e infraestrutura do VetSync](docs/images/DevOps-S2Spr3.drawio.png)
 
 ## Stack
 
