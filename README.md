@@ -266,41 +266,4 @@ O comando executa build, testes e relatório JaCoCo. Para gerar o relatório dir
 
 Os testes usam H2 em memória apenas como apoio automatizado. Isso não substitui o teste de integração, a persistência e os `SELECT`s no Azure SQL exigidos na demonstração.
 
-## Sprint 4 - Azure DevOps e CI/CD
-
-Para a entrega final, configure no Azure DevOps o projeto privado com:
-
-- nome: `Sprint 4 – Azure DevOps`;
-- controle de versão: Git;
-- processo: Scrum ou Agile;
-- professor convidado com nível `Basic`;
-- repositório da aplicação conectado ao projeto;
-- CI disparada a cada alteração na branch `master`, executando build, testes e publicação do artefato;
-- CD disparada após a geração do artefato, fazendo deploy no Azure Web App;
-- usuários, senhas e tokens armazenados como variáveis protegidas/secretas.
-
-O provisionamento usado pelo CD deve continuar sendo o Azure Web App com Azure SQL PaaS, sem misturar ACR/ACI ou banco containerizado com esta opção.
-
-Preencha os links da entrega antes da submissão:
-
-| Item | Link |
-|---|---|
-| Repositório público no GitHub | `<PREENCHER_URL_GITHUB>` |
-| Vídeo no YouTube | `<PREENCHER_URL_YOUTUBE>` |
-| Projeto no Azure DevOps | `<PREENCHER_URL_AZURE_DEVOPS>` |
-
-## Checklist da entrega
-
-- [ ] código-fonte público no GitHub;
-- [ ] `script_bd.sql` versionado;
-- [ ] recursos criados por Azure CLI;
-- [ ] aplicação publicada no Azure App Service;
-- [ ] Azure SQL PaaS configurado e acessível;
-- [ ] CRUD completo demonstrado em duas tabelas relacionadas;
-- [ ] pelo menos duas linhas significativas manipuladas;
-- [ ] `SELECT` no banco comprovando inclusão, consulta, alteração e exclusão;
-- [ ] README seguido exatamente no vídeo;
-- [ ] vídeo com no mínimo 720p, áudio claro e explicação falada;
-- [ ] links do GitHub, YouTube e Azure DevOps preenchidos na entrega correspondente.
-
 *VetSync - FIAP 2026 | Challenge Clyvo Vet | 2º Ano ADS*
