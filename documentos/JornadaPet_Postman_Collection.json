@@ -1,0 +1,543 @@
+{
+  "info": {
+    "name": "JornadaPet — API Sprint 1",
+    "description": "Coleção completa de requisições da API JornadaPet. Desenvolvida em Spring Boot com autenticação JWT.\n\n**Como usar:**\n1. Rode `POST /auth/register` para criar um usuário\n2. Rode `POST /auth/login` e copie o token retornado\n3. O token é salvo automaticamente na variável `{{token}}` se usar o script de teste\n4. Todas as rotas protegidas já usam `Bearer {{token}}`\n\nBase URL: `http://localhost:8080`",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "jornadapet-sprint1-fiap-2026"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "tutor_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "pet_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "evento_id",
+      "value": "1",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "🔐 Auth",
+      "description": "Registro e login de tutores. O login retorna o JWT necessário para as demais rotas.",
+      "item": [
+        {
+          "name": "Registrar tutor (com senha)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('token', json.token);",
+                  "    console.log('Token salvo:', json.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Carlos Teste\",\n  \"email\": \"carlos@email.com\",\n  \"senha\": \"senha123\",\n  \"telefone\": \"11999998888\",\n  \"cpf\": \"12345678901\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "register"]
+            },
+            "description": "Cria um novo tutor com senha (BCrypt). Retorna JWT imediatamente.\n\n**Resposta 201:**\n```json\n{\n  \"token\": \"eyJ...\",\n  \"email\": \"carlos@email.com\",\n  \"nome\": \"Carlos Teste\"\n}\n```"
+          },
+          "response": []
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('token', json.token);",
+                  "    console.log('Token salvo:', json.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"carlos@email.com\",\n  \"senha\": \"senha123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Autentica o tutor e retorna o JWT. O script salva o token automaticamente na variável `{{token}}`.\n\n**Resposta 200:**\n```json\n{\n  \"token\": \"eyJ...\",\n  \"email\": \"carlos@email.com\",\n  \"nome\": \"Carlos Teste\"\n}\n```\n**Erro 401:** Credenciais inválidas"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "👤 Tutores",
+      "description": "CRUD completo de tutores (donos dos pets). Todas as rotas exigem JWT.",
+      "item": [
+        {
+          "name": "Listar todos os tutores",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/tutores",
+              "host": ["{{base_url}}"],
+              "path": ["tutores"]
+            },
+            "description": "Retorna lista de todos os tutores cadastrados.\n\n**Resposta 200:** Array de TutorResponse"
+          },
+          "response": []
+        },
+        {
+          "name": "Buscar tutor por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/tutores/{{tutor_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["tutores", "{{tutor_id}}"]
+            },
+            "description": "Retorna um tutor específico pelo ID.\n\n**Resposta 200:** TutorResponse\n**Erro 404:** Tutor não encontrado"
+          },
+          "response": []
+        },
+        {
+          "name": "Cadastrar tutor",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('tutor_id', json.id);",
+                  "    console.log('tutor_id salvo:', json.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Ana Lima\",\n  \"email\": \"ana@email.com\",\n  \"telefone\": \"11988887777\",\n  \"cpf\": \"98765432100\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/tutores",
+              "host": ["{{base_url}}"],
+              "path": ["tutores"]
+            },
+            "description": "Cria um novo tutor sem senha (sem autenticação). Para tutor com senha use `/auth/register`.\n\n**Resposta 201:** TutorResponse\n**Erro 409:** Email já cadastrado"
+          },
+          "response": []
+        },
+        {
+          "name": "Atualizar tutor",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Ana Lima Atualizada\",\n  \"email\": \"ana@email.com\",\n  \"telefone\": \"11977776666\",\n  \"cpf\": \"98765432100\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/tutores/{{tutor_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["tutores", "{{tutor_id}}"]
+            },
+            "description": "Atualiza todos os dados de um tutor.\n\n**Resposta 200:** TutorResponse atualizado\n**Erro 404:** Tutor não encontrado"
+          },
+          "response": []
+        },
+        {
+          "name": "Deletar tutor",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/tutores/{{tutor_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["tutores", "{{tutor_id}}"]
+            },
+            "description": "Remove um tutor pelo ID.\n\n**Resposta 204:** No Content\n**Erro 404:** Tutor não encontrado"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "🐾 Pets",
+      "description": "Cadastro e gerenciamento de pets. Todas as rotas exigem JWT.",
+      "item": [
+        {
+          "name": "Cadastrar pet (vinculado a tutor)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('pet_id', json.id);",
+                  "    console.log('pet_id salvo:', json.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Bolinha\",\n  \"especie\": \"cão\",\n  \"raca\": \"Poodle\",\n  \"peso\": 4.5,\n  \"dataNascimento\": \"2021-06-10\",\n  \"sexo\": \"F\",\n  \"castrado\": true,\n  \"observacoes\": \"Alérgica a frango\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/pets/tutor/{{tutor_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["pets", "tutor", "{{tutor_id}}"]
+            },
+            "description": "Cadastra um pet vinculado a um tutor existente. Eventos iniciais de saúde são sugeridos automaticamente.\n\n**Resposta 201:** PetResponse com `idadeAnos` calculada\n**Erro 404:** Tutor não encontrado"
+          },
+          "response": []
+        },
+        {
+          "name": "Buscar pet por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/pets/{{pet_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["pets", "{{pet_id}}"]
+            },
+            "description": "Retorna perfil completo do pet com `idadeAnos` calculada automaticamente.\n\n**Resposta 200:** PetResponse\n**Erro 404:** Pet não encontrado"
+          },
+          "response": []
+        },
+        {
+          "name": "Listar pets por tutor (paginado)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/pets/tutor/{{tutor_id}}?page=0&size=10&sort=nome",
+              "host": ["{{base_url}}"],
+              "path": ["pets", "tutor", "{{tutor_id}}"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "10" },
+                { "key": "sort", "value": "nome" }
+              ]
+            },
+            "description": "Lista todos os pets de um tutor com paginação.\n\n**Query params:**\n- `page` (default 0)\n- `size` (default 10)\n- `sort` (default `nome`)\n\n**Resposta 200:** Page<PetResponse>"
+          },
+          "response": []
+        },
+        {
+          "name": "Listar pets por espécie",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/pets?especie=cão",
+              "host": ["{{base_url}}"],
+              "path": ["pets"],
+              "query": [
+                { "key": "especie", "value": "cão", "description": "Valores: cão, gato, pássaro, etc." }
+              ]
+            },
+            "description": "Filtra pets por espécie, ordenados por nome (case-insensitive).\n\n**Padrão:** `especie=cão`\n**Resposta 200:** List<PetResponse>"
+          },
+          "response": []
+        },
+        {
+          "name": "Atualizar pet",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Bolinha\",\n  \"especie\": \"cão\",\n  \"raca\": \"Poodle Toy\",\n  \"peso\": 5.0,\n  \"dataNascimento\": \"2021-06-10\",\n  \"sexo\": \"F\",\n  \"castrado\": true,\n  \"observacoes\": \"Alérgica a frango. Vacina em dia.\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/pets/{{pet_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["pets", "{{pet_id}}"]
+            },
+            "description": "Atualiza os dados de um pet.\n\n**Resposta 200:** PetResponse atualizado\n**Erro 404:** Pet não encontrado"
+          },
+          "response": []
+        },
+        {
+          "name": "Deletar pet",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/pets/{{pet_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["pets", "{{pet_id}}"]
+            },
+            "description": "Remove um pet pelo ID.\n\n**Resposta 204:** No Content\n**Erro 404:** Pet não encontrado"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "🏥 Eventos de Saúde",
+      "description": "Jornada contínua de saúde do pet — vacinas, vermifugações, banhos, check-ups e mais. Todas as rotas exigem JWT.",
+      "item": [
+        {
+          "name": "Registrar evento de saúde",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('evento_id', json.id);",
+                  "    console.log('evento_id salvo:', json.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipo\": \"VACINA\",\n  \"descricao\": \"V10 — dose anual\",\n  \"dataRealizacao\": \"2026-05-22\",\n  \"dataProxima\": \"2027-05-22\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/pets/{{pet_id}}/eventos",
+              "host": ["{{base_url}}"],
+              "path": ["pets", "{{pet_id}}", "eventos"]
+            },
+            "description": "Registra um evento de saúde para um pet.\n\n**Tipos disponíveis (TipoEvento):**\n`VACINA` | `VERMIFUGO` | `BANHO` | `TOSA` | `CHECKUP` | `CONSULTA` | `CIRURGIA` | `MEDICAMENTO`\n\n**Status inicial:** `PENDENTE` (automático)\n\n**Resposta 201:** EventoResponse\n**Erro 404:** Pet não encontrado"
+          },
+          "response": []
+        },
+        {
+          "name": "Listar eventos do pet (paginado)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/pets/{{pet_id}}/eventos?page=0&size=10&sort=dataProxima",
+              "host": ["{{base_url}}"],
+              "path": ["pets", "{{pet_id}}", "eventos"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "10" },
+                { "key": "sort", "value": "dataProxima" }
+              ]
+            },
+            "description": "Lista todos os eventos de saúde de um pet com paginação.\n\n**Resposta 200:** Page<EventoResponse>"
+          },
+          "response": []
+        },
+        {
+          "name": "Listar eventos PENDENTES",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/pets/{{pet_id}}/eventos/pendentes",
+              "host": ["{{base_url}}"],
+              "path": ["pets", "{{pet_id}}", "eventos", "pendentes"]
+            },
+            "description": "Retorna eventos com status `PENDENTE`. O status é atualizado para `ATRASADO` automaticamente se a data já passou.\n\n**Resposta 200:** List<EventoResponse>"
+          },
+          "response": []
+        },
+        {
+          "name": "Listar eventos ATRASADOS",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/pets/{{pet_id}}/eventos/atrasados",
+              "host": ["{{base_url}}"],
+              "path": ["pets", "{{pet_id}}", "eventos", "atrasados"]
+            },
+            "description": "Retorna eventos com `dataProxima` no passado e status ainda não `REALIZADO`.\n\n**Resposta 200:** List<EventoResponse>"
+          },
+          "response": []
+        },
+        {
+          "name": "Buscar evento por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/pets/{{pet_id}}/eventos/{{evento_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["pets", "{{pet_id}}", "eventos", "{{evento_id}}"]
+            },
+            "description": "Retorna um evento específico pelo ID.\n\n**Resposta 200:** EventoResponse\n**Erro 404:** Evento não encontrado"
+          },
+          "response": []
+        },
+        {
+          "name": "Marcar evento como REALIZADO",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dataProxima\": \"2027-05-22\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/pets/{{pet_id}}/eventos/{{evento_id}}/realizado",
+              "host": ["{{base_url}}"],
+              "path": ["pets", "{{pet_id}}", "eventos", "{{evento_id}}", "realizado"]
+            },
+            "description": "Define o status do evento como `REALIZADO`, registra `dataRealizacao = hoje` e opcionalmente agenda a próxima ocorrência.\n\n**Resposta 200:** EventoResponse com status REALIZADO"
+          },
+          "response": []
+        },
+        {
+          "name": "Atualizar evento",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipo\": \"VACINA\",\n  \"descricao\": \"V10 — dose anual (reagendada)\",\n  \"dataRealizacao\": \"2026-05-22\",\n  \"dataProxima\": \"2027-06-01\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/pets/{{pet_id}}/eventos/{{evento_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["pets", "{{pet_id}}", "eventos", "{{evento_id}}"]
+            },
+            "description": "Atualiza todos os campos de um evento de saúde.\n\n**Resposta 200:** EventoResponse atualizado\n**Erro 404:** Evento não encontrado"
+          },
+          "response": []
+        },
+        {
+          "name": "Deletar evento",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/pets/{{pet_id}}/eventos/{{evento_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["pets", "{{pet_id}}", "eventos", "{{evento_id}}"]
+            },
+            "description": "Remove um evento de saúde pelo ID.\n\n**Resposta 204:** No Content\n**Erro 404:** Evento não encontrado"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "⚙️ Utilitários",
+      "description": "Endpoints de saúde da aplicação e Swagger.",
+      "item": [
+        {
+          "name": "Health check",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/actuator/health",
+              "host": ["{{base_url}}"],
+              "path": ["actuator", "health"]
+            },
+            "description": "Verifica se a aplicação está no ar.\n\n**Resposta 200:**\n```json\n{ \"status\": \"UP\" }\n```"
+          },
+          "response": []
+        },
+        {
+          "name": "Swagger UI (abrir no browser)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/swagger-ui.html",
+              "host": ["{{base_url}}"],
+              "path": ["swagger-ui.html"]
+            },
+            "description": "Documentação interativa da API gerada pelo Springdoc OpenAPI."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
