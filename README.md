@@ -57,6 +57,12 @@ Fluxo de publicação:
 6. Usuários acessam a API pública e os dados são persistidos no Azure SQL
 ```
 
+### Diagrama de arquitetura
+
+O diagrama abaixo apresenta as personas, os componentes da aplicação, os recursos Azure, as relações entre App Service Plan, App Service, SQL Server, Azure SQL Database e Key Vault, além do fluxo de acesso à API.
+
+![Diagrama de arquitetura e infraestrutura do VetSync](docs/images/DevOps-S2Spr3.drawio.svg)
+
 ## Stack
 
 - Java 17 e Spring Boot 3.3.5;
