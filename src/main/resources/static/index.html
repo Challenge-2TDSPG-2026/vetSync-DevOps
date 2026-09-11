@@ -1,0 +1,909 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>VetSync — Console de testes</title>
+    <style>
+        :root {
+            --bg: #14171c; --panel: #1b1f26; --panel-2: #20242c; --line: #2b3038;
+            --text: #e6e9ee; --muted: #8b93a1;
+            --accent: #d98c3f; --accent-dim: #6b4b28;
+            --tutor: #5b9bd5; --vet: #5fb37c; --admin: #c77dd1;
+            --ok: #5fb37c; --err: #d9636b;
+            --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        * { box-sizing: border-box; }
+        body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; display: flex; min-height: 100vh; }
+
+        nav { width: 220px; flex-shrink: 0; background: var(--panel); border-right: 1px solid var(--line); padding: 18px 0; overflow-y: auto; }
+        nav .brand { padding: 0 18px 16px; border-bottom: 1px solid var(--line); margin-bottom: 10px; }
+        nav .brand strong { font-size: 15px; }
+        nav .brand span { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+        nav .group-label { padding: 14px 18px 6px; font-size: 10.5px; letter-spacing: .04em; color: var(--muted); }
+        nav button.tab {
+            display: block; width: 100%; text-align: left; background: none; border: none;
+            color: var(--muted); padding: 8px 18px; font-size: 13.5px; cursor: pointer; border-left: 2px solid transparent;
+        }
+        nav button.tab:hover { color: var(--text); background: var(--panel-2); }
+        nav button.tab.g-tutor { --tab-color: var(--tutor); }
+        nav button.tab.g-vet   { --tab-color: var(--vet); }
+        nav button.tab.g-admin { --tab-color: var(--admin); }
+        nav button.tab.active { color: var(--tab-color, var(--accent)); border-left-color: var(--tab-color, var(--accent)); background: var(--panel-2); }
+        nav button.tab[hidden] { display: none; }
+
+        main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+        header { padding: 12px 24px; border-bottom: 1px solid var(--line); background: var(--panel); display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+        header .origin { font-family: var(--mono); color: var(--muted); font-size: 12px; }
+        header .perfil-badge {
+            font-size: 11.5px; font-weight: 700; letter-spacing: .03em; padding: 3px 9px; border-radius: 20px;
+            background: var(--panel-2); color: var(--muted); border: 1px solid var(--line);
+        }
+        header .perfil-badge.TUTOR { color: var(--tutor); border-color: var(--tutor); }
+        header .perfil-badge.VETERINARIO { color: var(--vet); border-color: var(--vet); }
+        header .perfil-badge.ADMIN { color: var(--admin); border-color: var(--admin); }
+        header .who { font-size: 13px; color: var(--muted); }
+        header button.logout {
+            margin-left: auto; background: none; border: 1px solid var(--line); color: var(--muted);
+            border-radius: 4px; padding: 4px 10px; font-size: 12.5px; cursor: pointer;
+        }
+        header button.logout:hover { border-color: var(--err); color: var(--err); }
+
+        .content { flex: 1; display: flex; overflow: hidden; }
+        .forms { flex: 1.3; overflow-y: auto; padding: 24px; }
+        .response-col { flex: 1; border-left: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; min-width: 320px; }
+        .response-col h3 { padding: 14px 18px 0; margin: 0; font-size: 13px; color: var(--muted); font-weight: 600; }
+        #resp-meta { padding: 6px 18px 12px; font-family: var(--mono); font-size: 12.5px; border-bottom: 1px solid var(--line); }
+        #resp-meta.ok { color: var(--ok); } #resp-meta.err { color: var(--err); }
+        #resp-body { flex: 1; margin: 0; padding: 16px 18px; overflow: auto; font-family: var(--mono); font-size: 12.5px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+
+        section.panel { display: none; max-width: 660px; }
+        section.panel.active { display: block; }
+        section.panel h2 { font-size: 17px; margin: 0 0 4px; }
+        section.panel .desc { color: var(--muted); font-size: 12.5px; margin: 0 0 20px; }
+
+        .card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 16px 18px; margin-bottom: 16px; }
+        .card h4 { margin: 0 0 12px; font-size: 13px; color: var(--accent); font-weight: 600; }
+        .field { margin-bottom: 10px; }
+        .autocomplete-wrap { position: relative; }
+        .autocomplete-lista {
+            position: absolute; z-index: 20; top: 100%; left: 0; right: 0;
+            max-height: 220px; overflow-y: auto;
+            background: #1c2030; border: 1px solid #444; border-top: none;
+            border-radius: 0 0 6px 6px;
+        }
+        .autocomplete-item { padding: 8px 10px; cursor: pointer; font-size: 13px; }
+        .autocomplete-item:hover, .autocomplete-item.ativo { background: #3a4160; }
+        .autocomplete-item .nome { color: #eee; }
+        .autocomplete-item .principio { color: #999; font-size: 11px; }
+        .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+        .field input, .field select, .field textarea {
+            width: 100%; background: var(--panel-2); border: 1px solid var(--line); color: var(--text);
+            border-radius: 4px; padding: 7px 9px; font-family: var(--sans); font-size: 13px;
+        }
+        .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--accent-dim); }
+        .field textarea { font-family: var(--mono); min-height: 80px; resize: vertical; }
+        .row { display: flex; gap: 10px; }
+        .row .field { flex: 1; }
+        .note { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+
+        button.go { background: var(--accent); color: #1c1204; border: none; border-radius: 4px; padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
+        button.go:hover { filter: brightness(1.08); }
+        button.go.secondary { background: none; border: 1px solid var(--line); color: var(--text); }
+        button.go.secondary:hover { border-color: var(--accent-dim); }
+        button.go.danger { background: none; border: 1px solid var(--err); color: var(--err); }
+    </style>
+</head>
+<body>
+
+<nav>
+    <div class="brand"><strong>VetSync</strong><span>console de testes</span></div>
+
+    <div class="group-label">geral</div>
+    <button class="tab active" data-tab="auth" data-roles="ANY">Autenticação</button>
+    <button class="tab" data-tab="bootstrap" data-roles="ANY">Bootstrap admin</button>
+    <button class="tab" data-tab="catalogos" data-roles="TUTOR,VETERINARIO,ADMIN">Catálogos</button>
+
+    <div class="group-label">tutor</div>
+    <button class="tab g-tutor" data-tab="tutor-pets" data-roles="TUTOR">Meus pets</button>
+    <button class="tab g-tutor" data-tab="tutor-eventos" data-roles="TUTOR">Meus eventos</button>
+    <button class="tab g-tutor" data-tab="tutor-planos" data-roles="TUTOR">Meus planos</button>
+    <button class="tab g-tutor" data-tab="tutor-prescricoes" data-roles="TUTOR">Minhas prescrições</button>
+    <button class="tab g-tutor" data-tab="tutor-pontos" data-roles="TUTOR">Meus pontos</button>
+    <button class="tab g-tutor" data-tab="tutor-recompensas" data-roles="TUTOR">Recompensas</button>
+
+    <div class="group-label">veterinário</div>
+    <button class="tab g-vet" data-tab="vet-agenda" data-roles="VETERINARIO">Minha agenda</button>
+    <button class="tab g-vet" data-tab="vet-eventos" data-roles="VETERINARIO">Atendimentos</button>
+    <button class="tab g-vet" data-tab="vet-prescricoes" data-roles="VETERINARIO">Prescrições</button>
+    <button class="tab g-vet" data-tab="vet-planos" data-roles="VETERINARIO">Planos de tratamento</button>
+    <button class="tab g-vet" data-tab="vet-recompensas" data-roles="VETERINARIO">Recompensas</button>
+    <button class="tab g-vet" data-tab="vet-consulta" data-roles="VETERINARIO">Tutores e pets</button>
+    <button class="tab g-vet" data-tab="vet-perfil" data-roles="VETERINARIO">Meu perfil</button>
+
+    <div class="group-label">admin</div>
+    <button class="tab g-admin" data-tab="admin-veterinarios" data-roles="ADMIN">Cadastrar veterinário</button>
+    <button class="tab g-admin" data-tab="admin-admins" data-roles="ADMIN">Cadastrar admin</button>
+    <button class="tab g-admin" data-tab="admin-medicamentos" data-roles="ADMIN,VETERINARIO">Medicamentos</button>
+    <button class="tab g-admin" data-tab="admin-prescricoes" data-roles="ADMIN">Fila de prescrições</button>
+    <button class="tab g-admin" data-tab="admin-pontos" data-roles="ADMIN">Fila de pontos</button>
+
+    <div class="group-label">avançado</div>
+    <button class="tab" data-tab="console" data-roles="ANY">Console genérico</button>
+</nav>
+
+<main>
+    <header>
+        <span class="origin" id="origin-label"></span>
+        <span class="perfil-badge" id="perfil-badge">deslogado</span>
+        <span class="who" id="who-label"></span>
+        <button class="logout" id="logout-btn">sair</button>
+    </header>
+
+    <div class="content">
+        <div class="forms">
+
+            <!-- ===================== AUTENTICAÇÃO ===================== -->
+            <section class="panel active" data-panel="auth">
+                <h2>Autenticação</h2>
+                <p class="desc">Funciona pra tutor, veterinário ou admin — o backend descobre o perfil pelo e-mail. As abas ao lado mudam sozinhas de acordo com quem logar.</p>
+
+                <div class="card">
+                    <h4>POST /auth/login</h4>
+                    <div class="row">
+                        <div class="field"><label>E-mail</label><input id="login-email" type="email"></div>
+                        <div class="field"><label>Senha</label><input id="login-senha" type="password"></div>
+                    </div>
+                    <button class="go" onclick="login()">Entrar</button>
+                </div>
+
+                <div class="card">
+                    <h4>POST /auth/registrar <span style="color:var(--muted); font-weight:400;">(público, só cria TUTOR)</span></h4>
+                    <div class="row">
+                        <div class="field"><label>Nome</label><input id="reg-nome"></div>
+                        <div class="field"><label>E-mail</label><input id="reg-email" type="email"></div>
+                    </div>
+                    <div class="row">
+                        <div class="field"><label>Senha (mín. 6)</label><input id="reg-senha" type="password"></div>
+                        <div class="field"><label>CPF (11 dígitos)</label><input id="reg-cpf" maxlength="11"></div>
+                        <div class="field"><label>Telefone (10–11 dígitos)</label><input id="reg-telefone"></div>
+                    </div>
+                    <button class="go" onclick="registrarTutor()">Registrar e logar</button>
+                </div>
+
+                <div class="card">
+                    <h4>GET /auth/me</h4>
+                    <button class="go secondary" onclick="apiCall('GET','/auth/me')">Quem sou eu</button>
+                </div>
+            </section>
+
+            <!-- ===================== BOOTSTRAP ADMIN ===================== -->
+            <section class="panel" data-panel="bootstrap">
+                <h2>Bootstrap do primeiro admin</h2>
+                <p class="desc">Só funciona se ainda não existir nenhum admin no banco, e a chave precisa bater com <code>ADMIN_BOOTSTRAP_KEY</code> do ambiente. Depois disso, sempre 409.</p>
+                <div class="card">
+                    <h4>POST /admins/bootstrap</h4>
+                    <div class="field"><label>Nome</label><input id="ad-boot-nome"></div>
+                    <div class="field"><label>E-mail</label><input id="ad-boot-email" type="email"></div>
+                    <div class="field"><label>Chave</label><input id="ad-boot-chave"></div>
+                    <button class="go" onclick="adminBootstrap()">Criar primeiro admin</button>
+                    <p class="note">A senha temporária vem na resposta ao lado — use pra logar na aba Autenticação.</p>
+                </div>
+            </section>
+
+            <!-- ===================== CATALOGOS (compartilhado) ===================== -->
+            <section class="panel" data-panel="catalogos">
+                <h2>Catálogos</h2>
+                <p class="desc">Referência só-leitura. Os campos de tipo de evento, veterinário e medicamento em outros formulários já vêm preenchidos com esses nomes automaticamente — essa aba é só pra conferir os dados brutos.</p>
+                <div class="card"><h4>GET /tipos-evento</h4><button class="go secondary" onclick="apiCall('GET','/tipos-evento')">Listar</button></div>
+                <div class="card"><h4>GET /veterinarios</h4><button class="go secondary" onclick="apiCall('GET','/veterinarios')">Listar</button></div>
+                <div class="card"><h4>GET /medicamentos</h4><button class="go secondary" onclick="apiCall('GET','/medicamentos')">Listar</button></div>
+                <div class="card"><h4>GET /recompensas</h4><button class="go secondary" onclick="apiCall('GET','/recompensas')">Listar</button></div>
+            </section>
+
+            <!-- ===================== TUTOR: PETS ===================== -->
+            <section class="panel" data-panel="tutor-pets">
+                <h2>Meus pets</h2>
+                <div class="card">
+                    <h4>POST /pets — cadastrar</h4>
+                    <div class="row">
+                        <div class="field"><label>Nome do pet</label><input id="pet-nome"></div>
+                        <div class="field">
+                            <label>Espécie</label>
+                            <select id="pet-especie" onchange="document.getElementById('pet-especie-outro-wrap').style.display = this.value==='OUTRO' ? 'block' : 'none'">
+                                <option value="CAO">CAO</option><option value="GATO">GATO</option><option value="AVE">AVE</option><option value="OUTRO">OUTRO</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="field" id="pet-especie-outro-wrap" style="display:none;"><label>Espécie (qual, se "OUTRO")</label><input id="pet-especie-outro"></div>
+                    <div class="row">
+                        <div class="field"><label>Raça</label><input id="pet-raca"></div>
+                        <div class="field"><label>Data de nascimento</label><input id="pet-nascimento" type="date"></div>
+                        <div class="field"><label>Peso (kg)</label><input id="pet-peso" type="number" step="0.01"></div>
+                    </div>
+                    <button class="go" onclick="petCadastrar()">Cadastrar pet</button>
+                </div>
+                <div class="card"><h4>GET /pets — meus pets</h4><button class="go secondary" onclick="apiCall('GET','/pets')">Listar</button></div>
+                <div class="card">
+                    <h4>PUT /pets/{id} &nbsp;·&nbsp; DELETE /pets/{id}</h4>
+                    <div class="field"><label>id</label><input id="pet-up-id" type="number"></div>
+                    <div class="row">
+                        <div class="field"><label>Nome</label><input id="pet-up-nome"></div>
+                        <div class="field"><label>Espécie</label>
+                            <select id="pet-up-especie"><option value="CAO">CAO</option><option value="GATO">GATO</option><option value="AVE">AVE</option><option value="OUTRO">OUTRO</option></select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="field"><label>Espécie (se OUTRO)</label><input id="pet-up-especie-outro"></div>
+                        <div class="field"><label>Raça</label><input id="pet-up-raca"></div>
+                        <div class="field"><label>Peso</label><input id="pet-up-peso" type="number" step="0.01"></div>
+                    </div>
+                    <div class="row">
+                        <button class="go secondary" onclick="petAtualizar()">Atualizar</button>
+                        <button class="go danger" onclick="apiCall('DELETE',`/pets/${val('pet-up-id')}`)">Deletar</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===================== TUTOR: EVENTOS ===================== -->
+            <section class="panel" data-panel="tutor-eventos">
+                <h2>Meus eventos</h2>
+                <p class="desc">Escolha veterinário, data e horário. Só é bloqueado se esse veterinário já tiver outro evento agendado no mesmo horário, ou se a data estiver marcada como bloqueio de agenda dele. Veja os IDs em Catálogos.</p>
+                <div class="card">
+                    <h4>POST /eventos — agendar</h4>
+                    <div class="row">
+                        <div class="field"><label>idPet</label><input id="ev-idpet" type="number"></div>
+                        <div class="field"><label>Tipo de evento</label><select id="ev-idtipo" class="cat-select" data-cat="tiposEvento"><option value="">carregando…</option></select></div>
+                    </div>
+                    <div class="row">
+                        <div class="field"><label>Veterinário</label><select id="ev-idvet" class="cat-select" data-cat="veterinarios"><option value="">carregando…</option></select></div>
+                        <div class="field"><label>dtEvento</label><input id="ev-data" type="date"></div>
+                        <div class="field"><label>hrEvento</label><input id="ev-hora" type="time"></div>
+                    </div>
+                    <div class="field"><label>dsObservacao</label><input id="ev-obs"></div>
+                    <button class="go" onclick="eventoAgendar()">Agendar</button>
+                </div>
+                <div class="card"><h4>GET /eventos</h4><button class="go secondary" onclick="apiCall('GET','/eventos')">Listar</button></div>
+                <div class="card">
+                    <h4>GET /eventos/{id}</h4>
+                    <div class="field"><label>id</label><input id="ev-buscar-id" type="number"></div>
+                    <button class="go secondary" onclick="apiCall('GET',`/eventos/${val('ev-buscar-id')}`)">Buscar</button>
+                </div>
+                <div class="card">
+                    <h4>PATCH /eventos/{id}/cancelar</h4>
+                    <div class="field"><label>id</label><input id="ev-cancelar-id" type="number"></div>
+                    <div class="row">
+                        <div class="field"><label>motivo (obrigatório)</label><input id="ev-cancelar-motivo"></div>
+                        <div class="field"><label>reagendarPara (opcional)</label><input id="ev-cancelar-nova-data" type="date"></div>
+                        <div class="field"><label>horaReagendarPara</label><input id="ev-cancelar-nova-hora" type="time"></div>
+                    </div>
+                    <button class="go" onclick="eventoCancelar()">Cancelar</button>
+                </div>
+                <div class="card">
+                    <h4>GET .../gasto-total &nbsp;·&nbsp; .../alertas</h4>
+                    <div class="field"><label>idPet</label><input id="ev-pet-id" type="number"></div>
+                    <div class="row">
+                        <button class="go secondary" onclick="apiCall('GET',`/eventos/pet/${val('ev-pet-id')}/gasto-total`)">Gasto total</button>
+                        <button class="go secondary" onclick="apiCall('GET',`/eventos/pet/${val('ev-pet-id')}/alertas`)">Alertas</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===================== TUTOR: PLANOS ===================== -->
+            <section class="panel" data-panel="tutor-planos">
+                <h2>Meus planos de tratamento</h2>
+                <div class="card"><h4>GET /planos</h4><button class="go secondary" onclick="apiCall('GET','/planos')">Listar</button></div>
+                <div class="card">
+                    <h4>GET /planos/{id}</h4>
+                    <div class="field"><label>id</label><input id="pl-buscar-id" type="number"></div>
+                    <button class="go secondary" onclick="apiCall('GET',`/planos/${val('pl-buscar-id')}`)">Buscar</button>
+                </div>
+                <div class="card">
+                    <h4>PATCH /planos/itens/{idItem}/agendar</h4>
+                    <div class="field"><label>idItem</label><input id="pl-item-id" type="number"></div>
+                    <div class="row">
+                        <div class="field"><label>Veterinário</label><select id="pl-item-vet" class="cat-select" data-cat="veterinarios"><option value="">carregando…</option></select></div>
+                        <div class="field"><label>dtEvento</label><input id="pl-item-data" type="date"></div>
+                        <div class="field"><label>hrEvento</label><input id="pl-item-hora" type="time"></div>
+                    </div>
+                    <div class="field"><label>dsObservacao</label><input id="pl-item-obs"></div>
+                    <button class="go" onclick="planoAgendarItem()">Agendar item</button>
+                </div>
+            </section>
+
+            <!-- ===================== TUTOR: PRESCRICOES ===================== -->
+            <section class="panel" data-panel="tutor-prescricoes">
+                <h2>Minhas prescrições</h2>
+                <div class="card"><h4>GET /prescricoes</h4><button class="go secondary" onclick="apiCall('GET','/prescricoes')">Listar</button></div>
+                <div class="card">
+                    <h4>GET /prescricoes/{id}</h4>
+                    <div class="field"><label>id</label><input id="pr-buscar-id-tutor" type="number"></div>
+                    <button class="go secondary" onclick="apiCall('GET',`/prescricoes/${val('pr-buscar-id-tutor')}`)">Buscar</button>
+                </div>
+            </section>
+
+            <!-- ===================== TUTOR: PONTOS ===================== -->
+            <section class="panel" data-panel="tutor-pontos">
+                <h2>Meus pontos</h2>
+                <div class="card"><h4>GET /pontos</h4><p class="note">Mostra pendentes e liberados, de evento e de bônus de plano.</p><button class="go secondary" onclick="apiCall('GET','/pontos')">Listar</button></div>
+            </section>
+
+            <!-- ===================== TUTOR: RECOMPENSAS ===================== -->
+            <section class="panel" data-panel="tutor-recompensas">
+                <h2>Recompensas</h2>
+                <div class="card"><h4>GET /recompensas</h4><button class="go secondary" onclick="apiCall('GET','/recompensas')">Listar catálogo</button></div>
+                <div class="card"><h4>GET /recompensas/saldo</h4><button class="go secondary" onclick="apiCall('GET','/recompensas/saldo')">Ver saldo</button></div>
+                <div class="card">
+                    <h4>PATCH /recompensas/{id}/resgatar</h4>
+                    <div class="field"><label>id da recompensa</label><input id="rc-resgatar-id" type="number"></div>
+                    <button class="go" onclick="apiCall('PATCH',`/recompensas/${val('rc-resgatar-id')}/resgatar`)">Resgatar</button>
+                </div>
+                <div class="card"><h4>GET /recompensas/resgates</h4><button class="go secondary" onclick="apiCall('GET','/recompensas/resgates')">Meus resgates</button></div>
+            </section>
+
+            <!-- ===================== VET: AGENDA ===================== -->
+            <section class="panel" data-panel="vet-agenda">
+                <h2>Minha agenda</h2>
+                <p class="desc">Escolha seu próprio nome na lista (você só tem permissão de mexer na própria agenda).</p>
+                <div class="card">
+                    <h4>GET /veterinarios/{id}/disponibilidade &nbsp;·&nbsp; POST</h4>
+                    <div class="field"><label>Veterinário</label><select id="disp-idvet" class="cat-select" data-cat="veterinarios"><option value="">carregando…</option></select></div>
+                    <button class="go secondary" onclick="apiCall('GET',`/veterinarios/${val('disp-idvet')}/disponibilidade`)">Listar</button>
+                    <div class="row" style="margin-top:10px;">
+                        <div class="field"><label>nrDiaSemana (1=seg...7=dom)</label><input id="disp-dia" type="number" min="1" max="7"></div>
+                        <div class="field"><label>hrInicio (HH:mm)</label><input id="disp-inicio" placeholder="08:00"></div>
+                        <div class="field"><label>hrFim (HH:mm)</label><input id="disp-fim" placeholder="18:00"></div>
+                    </div>
+                    <button class="go" onclick="disponibilidadeAdicionar()">Adicionar horário</button>
+                </div>
+                <div class="card">
+                    <h4>DELETE /veterinarios/{id}/disponibilidade/{idDisponibilidade}</h4>
+                    <div class="row">
+                        <div class="field"><label>Veterinário</label><select id="disp-del-idvet" class="cat-select" data-cat="veterinarios"><option value="">carregando…</option></select></div>
+                        <div class="field"><label>idDisponibilidade</label><input id="disp-del-id" type="number"></div>
+                    </div>
+                    <button class="go danger" onclick="apiCall('DELETE',`/veterinarios/${val('disp-del-idvet')}/disponibilidade/${val('disp-del-id')}`)">Remover</button>
+                </div>
+                <div class="card">
+                    <h4>GET /veterinarios/{id}/bloqueios &nbsp;·&nbsp; POST</h4>
+                    <div class="field"><label>Veterinário</label><select id="bloq-idvet" class="cat-select" data-cat="veterinarios"><option value="">carregando…</option></select></div>
+                    <button class="go secondary" onclick="apiCall('GET',`/veterinarios/${val('bloq-idvet')}/bloqueios`)">Listar</button>
+                    <div class="row" style="margin-top:10px;">
+                        <div class="field"><label>dtInicio</label><input id="bloq-inicio" type="date"></div>
+                        <div class="field"><label>dtFim</label><input id="bloq-fim" type="date"></div>
+                        <div class="field"><label>motivo</label><input id="bloq-motivo"></div>
+                    </div>
+                    <button class="go" onclick="bloqueioAdicionar()">Adicionar bloqueio</button>
+                </div>
+                <div class="card">
+                    <h4>DELETE /veterinarios/{id}/bloqueios/{idBloqueio}</h4>
+                    <div class="row">
+                        <div class="field"><label>Veterinário</label><select id="bloq-del-idvet" class="cat-select" data-cat="veterinarios"><option value="">carregando…</option></select></div>
+                        <div class="field"><label>idBloqueio</label><input id="bloq-del-id" type="number"></div>
+                    </div>
+                    <button class="go danger" onclick="apiCall('DELETE',`/veterinarios/${val('bloq-del-idvet')}/bloqueios/${val('bloq-del-id')}`)">Remover</button>
+                </div>
+            </section>
+
+            <!-- ===================== VET: EVENTOS ===================== -->
+            <section class="panel" data-panel="vet-eventos">
+                <h2>Atendimentos</h2>
+                <div class="card"><h4>GET /eventos</h4><p class="note">Mostra os eventos atribuídos a você.</p><button class="go secondary" onclick="apiCall('GET','/eventos')">Listar</button></div>
+                <div class="card">
+                    <h4>PATCH /eventos/{id}/concluir</h4>
+                    <div class="field"><label>id</label><input id="ev-concluir-id" type="number"></div>
+                    <div class="row">
+                        <div class="field"><label>dsObservacao</label><input id="ev-concluir-obs"></div>
+                        <div class="field"><label>vlCusto</label><input id="ev-concluir-custo" type="number" step="0.01"></div>
+                    </div>
+                    <button class="go" onclick="eventoConcluir()">Concluir</button>
+                </div>
+            </section>
+
+            <!-- ===================== VET: PRESCRICOES ===================== -->
+            <section class="panel" data-panel="vet-prescricoes">
+                <h2>Prescrições</h2>
+                <div class="card">
+                    <h4>POST /prescricoes — solicitar</h4>
+                    <div class="row">
+                        <div class="field"><label>idEvento (evento sob sua responsabilidade)</label><input id="pr-idevento" type="number"></div>
+                        <div class="field autocomplete-wrap">
+                            <label>Medicamento</label>
+                            <input type="text" id="pr-idmed-busca" placeholder="Digite pra buscar…" autocomplete="off">
+                            <input type="hidden" id="pr-idmed">
+                            <div id="pr-idmed-lista" class="autocomplete-lista" hidden></div>
+                        </div>
+                    </div>
+                    <div class="field"><label>dsPosologia</label><input id="pr-posologia"></div>
+                    <div class="row">
+                        <div class="field"><label>dtInicio</label><input id="pr-inicio" type="date"></div>
+                        <div class="field"><label>dtFim (opcional)</label><input id="pr-fim" type="date"></div>
+                        <div class="field"><label>qtDosesDia (opcional)</label><input id="pr-doses" type="number"></div>
+                    </div>
+                    <button class="go" onclick="prescricaoSolicitar()">Solicitar</button>
+                </div>
+                <div class="card"><h4>GET /prescricoes</h4><button class="go secondary" onclick="apiCall('GET','/prescricoes')">Listar as que eu solicitei</button></div>
+            </section>
+
+            <!-- ===================== VET: PLANOS ===================== -->
+            <section class="panel" data-panel="vet-planos">
+                <h2>Planos de tratamento</h2>
+                <div class="card">
+                    <h4>POST /planos — criar</h4>
+                    <div class="row">
+                        <div class="field"><label>idPet</label><input id="pl-idpet" type="number"></div>
+                        <div class="field"><label>nrPontosBonus</label><input id="pl-bonus" type="number"></div>
+                    </div>
+                    <div class="field"><label>idsTipoEvento (vírgula, mín. 2 — ordem = sequência)</label><input id="pl-tipos" placeholder="ex: 1, 1, 3"></div>
+                    <button class="go" onclick="planoCriar()">Criar plano</button>
+                </div>
+                <div class="card"><h4>GET /planos</h4><button class="go secondary" onclick="apiCall('GET','/planos')">Listar os que eu criei</button></div>
+            </section>
+
+            <!-- ===================== VET: RECOMPENSAS ===================== -->
+            <section class="panel" data-panel="vet-recompensas">
+                <h2>Recompensas</h2>
+                <div class="card">
+                    <h4>POST /recompensas — cadastrar no catálogo</h4>
+                    <div class="field"><label>Nome</label><input id="rc-nome"></div>
+                    <div class="field"><label>Descrição</label><input id="rc-desc"></div>
+                    <div class="row">
+                        <div class="field"><label>Custo em pontos</label><input id="rc-custo" type="number"></div>
+                        <div class="field"><label>Tipo</label><select id="rc-tipo"><option value="PRODUTO">PRODUTO</option><option value="CUPOM_DESCONTO">CUPOM_DESCONTO</option></select></div>
+                    </div>
+                    <button class="go" onclick="recompensaCriar()">Cadastrar</button>
+                </div>
+                <div class="card"><h4>GET /recompensas/resgates</h4><p class="note">Mostra a fila de resgates pendentes de validação.</p><button class="go secondary" onclick="apiCall('GET','/recompensas/resgates')">Listar pendentes</button></div>
+                <div class="card">
+                    <h4>PATCH /recompensas/resgates/{id}/validar</h4>
+                    <div class="row">
+                        <div class="field"><label>idResgate</label><input id="rc-validar-id" type="number"></div>
+                        <div class="field"><label>aprovado</label><select id="rc-validar-aprovado"><option value="true">true</option><option value="false">false</option></select></div>
+                    </div>
+                    <button class="go" onclick="resgateValidar()">Enviar decisão</button>
+                </div>
+            </section>
+
+            <!-- ===================== VET: TUTORES/PETS ===================== -->
+            <section class="panel" data-panel="vet-consulta">
+                <h2>Tutores e pets</h2>
+                <div class="card"><h4>GET /tutores</h4><button class="go secondary" onclick="apiCall('GET','/tutores')">Listar todos</button></div>
+                <div class="card">
+                    <h4>GET /tutores/{id}</h4>
+                    <div class="field"><label>id</label><input id="tu-id" type="number"></div>
+                    <button class="go secondary" onclick="apiCall('GET',`/tutores/${val('tu-id')}`)">Buscar</button>
+                </div>
+                <div class="card">
+                    <h4>GET /pets/{id} &nbsp;·&nbsp; /pets/tutor/{idTutor}</h4>
+                    <div class="row">
+                        <div class="field"><label>idPet</label><input id="vp-pet-id" type="number"></div>
+                        <div class="field"><label>idTutor</label><input id="vp-tutor-id" type="number"></div>
+                    </div>
+                    <div class="row">
+                        <button class="go secondary" onclick="apiCall('GET',`/pets/${val('vp-pet-id')}`)">Buscar pet</button>
+                        <button class="go secondary" onclick="apiCall('GET',`/pets/tutor/${val('vp-tutor-id')}`)">Pets do tutor</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===================== VET: PERFIL ===================== -->
+            <section class="panel" data-panel="vet-perfil">
+                <h2>Meu perfil</h2>
+                <div class="card">
+                    <h4>PUT /veterinarios/{id}</h4>
+                    <div class="row">
+                        <div class="field"><label>id (seu próprio)</label><input id="vet-up-id" type="number"></div>
+                        <div class="field"><label>Nome</label><input id="vet-up-nome"></div>
+                        <div class="field"><label>idClinica</label><input id="vet-up-clinica" type="number"></div>
+                    </div>
+                    <button class="go" onclick="veterinarioAtualizar()">Atualizar</button>
+                </div>
+            </section>
+
+            <!-- ===================== ADMIN: VETERINARIOS ===================== -->
+            <section class="panel" data-panel="admin-veterinarios">
+                <h2>Cadastrar veterinário</h2>
+                <p class="desc">Gera CRM e senha temporária automaticamente, enviados por e-mail.</p>
+                <div class="card">
+                    <h4>POST /veterinarios</h4>
+                    <div class="field"><label>Nome</label><input id="vet-nome"></div>
+                    <div class="field"><label>E-mail</label><input id="vet-email" type="email"></div>
+                    <div class="field"><label>idClinica</label><input id="vet-clinica" type="number"></div>
+                    <button class="go" onclick="veterinarioCadastrar()">Cadastrar</button>
+                </div>
+            </section>
+
+            <!-- ===================== ADMIN: ADMINS ===================== -->
+            <section class="panel" data-panel="admin-admins">
+                <h2>Cadastrar admin</h2>
+                <div class="card">
+                    <h4>POST /admins</h4>
+                    <div class="field"><label>Nome</label><input id="ad-nome"></div>
+                    <div class="field"><label>E-mail</label><input id="ad-email" type="email"></div>
+                    <button class="go" onclick="adminCriar()">Criar admin</button>
+                </div>
+            </section>
+
+            <!-- ===================== MEDICAMENTOS (admin+vet) ===================== -->
+            <section class="panel" data-panel="admin-medicamentos">
+                <h2>Medicamentos</h2>
+                <div class="card">
+                    <h4>POST /medicamentos</h4>
+                    <div class="field"><label>Nome</label><input id="md-nome"></div>
+                    <div class="row">
+                        <div class="field"><label>Princípio ativo</label><input id="md-principio"></div>
+                        <div class="field"><label>Preço de referência</label><input id="md-preco" type="number" step="0.01"></div>
+                    </div>
+                    <button class="go" onclick="medicamentoCriar()">Cadastrar</button>
+                </div>
+                <div class="card"><h4>GET /medicamentos</h4><button class="go secondary" onclick="apiCall('GET','/medicamentos')">Listar</button></div>
+                <div class="card">
+                    <h4>PUT /medicamentos/{id} &nbsp;·&nbsp; DELETE (só ADMIN)</h4>
+                    <div class="field"><label>id</label><input id="md-id" type="number"></div>
+                    <div class="row">
+                        <div class="field"><label>Nome</label><input id="md-up-nome"></div>
+                        <div class="field"><label>Princípio</label><input id="md-up-principio"></div>
+                        <div class="field"><label>Preço</label><input id="md-up-preco" type="number" step="0.01"></div>
+                    </div>
+                    <div class="row">
+                        <button class="go secondary" onclick="medicamentoAtualizar()">Atualizar</button>
+                        <button class="go danger" onclick="apiCall('DELETE',`/medicamentos/${val('md-id')}`)">Deletar</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===================== ADMIN: FILA PRESCRICOES ===================== -->
+            <section class="panel" data-panel="admin-prescricoes">
+                <h2>Fila de prescrições</h2>
+                <div class="card"><h4>GET /prescricoes</h4><p class="note">Mostra a fila pendente.</p><button class="go secondary" onclick="apiCall('GET','/prescricoes')">Listar pendentes</button></div>
+                <div class="card">
+                    <h4>PATCH /prescricoes/{id}/liberar</h4>
+                    <div class="row">
+                        <div class="field"><label>id</label><input id="pr-liberar-id" type="number"></div>
+                        <div class="field"><label>aprovado</label><select id="pr-liberar-aprovado"><option value="true">true</option><option value="false">false</option></select></div>
+                    </div>
+                    <button class="go" onclick="prescricaoLiberar()">Enviar decisão</button>
+                </div>
+            </section>
+
+            <!-- ===================== ADMIN: FILA PONTOS ===================== -->
+            <section class="panel" data-panel="admin-pontos">
+                <h2>Fila de pontos</h2>
+                <div class="card"><h4>GET /pontos</h4><p class="note">Mostra a fila pendente (eventos e bônus de plano).</p><button class="go secondary" onclick="apiCall('GET','/pontos')">Listar pendentes</button></div>
+                <div class="card">
+                    <h4>PATCH /pontos/{id}/liberar</h4>
+                    <div class="field"><label>id</label><input id="pt-liberar-id" type="number"></div>
+                    <button class="go" onclick="apiCall('PATCH',`/pontos/${val('pt-liberar-id')}/liberar`)">Liberar</button>
+                </div>
+            </section>
+
+            <!-- ===================== CONSOLE GENERICO ===================== -->
+            <section class="panel" data-panel="console">
+                <h2>Console genérico</h2>
+                <p class="desc">Pra qualquer chamada fora do previsto acima. O token, se houver, é enviado automaticamente.</p>
+                <div class="card">
+                    <div class="row">
+                        <div class="field" style="flex:0 0 110px;">
+                            <label>Método</label>
+                            <select id="gen-metodo"><option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option></select>
+                        </div>
+                        <div class="field"><label>Caminho</label><input id="gen-path" placeholder="/pets"></div>
+                    </div>
+                    <div class="field"><label>Corpo (JSON, deixe vazio se não precisar)</label><textarea id="gen-body" placeholder='{"nmPet": "Rex"}'></textarea></div>
+                    <button class="go" onclick="genericSend()">Enviar</button>
+                </div>
+            </section>
+
+        </div>
+
+        <div class="response-col">
+            <h3>Resposta</h3>
+            <div id="resp-meta">nenhuma chamada ainda</div>
+            <pre id="resp-body"></pre>
+        </div>
+    </div>
+</main>
+
+<script>
+    // ===== estado =====
+    let token = null;
+    let perfilAtual = null; // null | 'TUTOR' | 'VETERINARIO' | 'ADMIN'
+
+    document.getElementById('origin-label').textContent = window.location.origin;
+
+    // ===== catálogos (preenchem os <select> de tipo de evento / veterinário / medicamento) =====
+    const CATALOGOS = {
+        tiposEvento: { path: '/tipos-evento', valueKey: 'idTipoEvento', labelFn: t => t.nmTipoEvento },
+        veterinarios: { path: '/veterinarios', valueKey: 'idVeterinario', labelFn: v => v.nmVeterinario },
+        medicamentos: { path: '/medicamentos', valueKey: 'idMedicamento', labelFn: m => m.nmMedicamento },
+    };
+
+    async function carregarCatalogos() {
+        for (const [nome, cfg] of Object.entries(CATALOGOS)) {
+            const selects = document.querySelectorAll(`select.cat-select[data-cat="${nome}"]`);
+            const precisaBuscar = selects.length > 0 || nome === 'medicamentos';
+            if (!precisaBuscar) continue;
+            try {
+                const res = await fetch(cfg.path, { headers: token ? { Authorization: 'Bearer ' + token } : {} });
+                if (!res.ok) throw new Error('status ' + res.status);
+                const lista = await res.json();
+                lista.sort((a, b) => cfg.labelFn(a).localeCompare(cfg.labelFn(b), 'pt-BR'));
+                selects.forEach(sel => {
+                    const atual = sel.value;
+                    sel.innerHTML = '<option value="">selecione…</option>' +
+                        lista.map(item => `<option value="${item[cfg.valueKey]}">${cfg.labelFn(item)} — #${item[cfg.valueKey]}</option>`).join('');
+                    if (atual && lista.some(item => String(item[cfg.valueKey]) === atual)) sel.value = atual;
+                });
+                if (nome === 'medicamentos') {
+                    MEDICAMENTOS_CACHE = lista;
+                }
+            } catch (e) {
+                selects.forEach(sel => { sel.innerHTML = '<option value="">erro ao carregar — use a aba Catálogos</option>'; });
+                if (nome === 'medicamentos') MEDICAMENTOS_CACHE = [];
+            }
+        }
+    }
+
+    // ===== autocomplete de medicamento (campo de texto com sugestões, ordenado A-Z) =====
+    let MEDICAMENTOS_CACHE = [];
+
+    function configurarAutocompleteMedicamento() {
+        const input = document.getElementById('pr-idmed-busca');
+        const hidden = document.getElementById('pr-idmed');
+        const lista = document.getElementById('pr-idmed-lista');
+        if (!input || !hidden || !lista) return;
+
+        function renderizar(filtro) {
+            const termo = filtro.trim().toLowerCase();
+            const itens = MEDICAMENTOS_CACHE.filter(m => m.nmMedicamento.toLowerCase().includes(termo));
+            if (itens.length === 0) {
+                lista.innerHTML = MEDICAMENTOS_CACHE.length === 0
+                    ? '<div class="autocomplete-item">nenhum medicamento cadastrado ainda — use a aba Medicamentos</div>'
+                    : '<div class="autocomplete-item">nenhum resultado</div>';
+            } else {
+                lista.innerHTML = itens.map(m => `
+                    <div class="autocomplete-item" data-id="${m.idMedicamento}" data-nome="${m.nmMedicamento.replace(/"/g, '&quot;')}">
+                        <div class="nome">${m.nmMedicamento}</div>
+                        <div class="principio">${m.dsPrincipio || ''} — #${m.idMedicamento}</div>
+                    </div>`).join('');
+            }
+            lista.hidden = false;
+        }
+
+        input.addEventListener('focus', () => renderizar(input.value));
+        input.addEventListener('input', () => {
+            hidden.value = ''; // texto mudou, invalida seleção anterior até escolher de novo
+            renderizar(input.value);
+        });
+        input.addEventListener('blur', () => {
+            setTimeout(() => { lista.hidden = true; }, 150); // delay pra permitir o clique no item
+        });
+        lista.addEventListener('mousedown', (e) => {
+            const item = e.target.closest('.autocomplete-item[data-id]');
+            if (!item) return;
+            hidden.value = item.dataset.id;
+            input.value = item.dataset.nome;
+            lista.hidden = true;
+        });
+    }
+    configurarAutocompleteMedicamento();
+
+    // ===== navegação e visibilidade por perfil =====
+    const tabs = Array.from(document.querySelectorAll('nav .tab'));
+
+    function applyRoleVisibility() {
+        let activeStillVisible = false;
+        tabs.forEach(btn => {
+            const roles = btn.dataset.roles.split(',');
+            const visible = roles.includes('ANY') || (perfilAtual && roles.includes(perfilAtual));
+            btn.hidden = !visible;
+            if (visible && btn.classList.contains('active')) activeStillVisible = true;
+        });
+        if (!activeStillVisible) {
+            const fallback = tabs.find(b => !b.hidden) || tabs[0];
+            selecionarTab(fallback.dataset.tab);
+        }
+    }
+
+    function selecionarTab(tabName) {
+        tabs.forEach(b => b.classList.toggle('active', b.dataset.tab === tabName));
+        document.querySelectorAll('section.panel').forEach(p => p.classList.toggle('active', p.dataset.panel === tabName));
+    }
+
+    tabs.forEach(btn => btn.addEventListener('click', () => selecionarTab(btn.dataset.tab)));
+
+    // ===== helpers =====
+    function val(id) {
+        const el = document.getElementById(id);
+        const v = el.value.trim();
+        return v === '' ? null : v;
+    }
+    function num(id) {
+        const v = val(id);
+        return v === null ? null : Number(v);
+    }
+
+    async function apiCall(method, path, body) {
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = 'Bearer ' + token;
+        const opts = { method, headers };
+        if (body !== undefined && body !== null) opts.body = JSON.stringify(body);
+
+        let status, data;
+        try {
+            const res = await fetch(path, opts);
+            status = res.status;
+            const text = await res.text();
+            try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+        } catch (e) {
+            status = 0;
+            data = { erroDeRede: String(e), dica: 'Confira se a aplicação está rodando e se você abriu via http://localhost:8080/teste-api.html.' };
+        }
+
+        const metaEl = document.getElementById('resp-meta');
+        metaEl.textContent = `${method} ${path} → ${status}`;
+        metaEl.className = (status >= 200 && status < 300) ? 'ok' : 'err';
+        document.getElementById('resp-body').textContent = JSON.stringify(data, null, 2);
+        return { status, data };
+    }
+
+    function setAuth(tok, perfil, nome, email) {
+        token = tok;
+        perfilAtual = perfil;
+        const badge = document.getElementById('perfil-badge');
+        const who = document.getElementById('who-label');
+        if (tok) {
+            badge.textContent = perfil;
+            badge.className = 'perfil-badge ' + perfil;
+            who.textContent = `${nome || ''} · ${email || ''}`;
+        } else {
+            badge.textContent = 'deslogado';
+            badge.className = 'perfil-badge';
+            who.textContent = '';
+        }
+        applyRoleVisibility();
+        carregarCatalogos();
+    }
+    document.getElementById('logout-btn').onclick = async () => {
+        if (token) await apiCall('POST', '/auth/logout');
+        setAuth(null, null);
+    };
+
+    // ===== autenticação =====
+    async function login() {
+        const email = val('login-email');
+        const body = { email, senha: val('login-senha') };
+        const { status, data } = await apiCall('POST', '/auth/login', body);
+        if (status === 200 && data && data.token) {
+            setAuth(data.token, data.perfil, data.nome, data.email);
+        }
+    }
+
+    async function registrarTutor() {
+        const body = {
+            nome: val('reg-nome'), email: val('reg-email'), senha: val('reg-senha'),
+            cpf: val('reg-cpf'), telefone: val('reg-telefone'),
+        };
+        const { status, data } = await apiCall('POST', '/auth/registrar', body);
+        if (status === 201 && data && data.token) {
+            setAuth(data.token, data.perfil, data.nome, data.email);
+        }
+    }
+
+    // ===== bootstrap admin =====
+    function adminBootstrap() {
+        apiCall('POST', '/admins/bootstrap', { nome: val('ad-boot-nome'), email: val('ad-boot-email'), chave: val('ad-boot-chave') });
+    }
+
+    // ===== pets =====
+    function petCadastrar() {
+        apiCall('POST', '/pets', {
+            nmPet: val('pet-nome'), especie: document.getElementById('pet-especie').value,
+            especieOutro: val('pet-especie-outro'), raca: val('pet-raca'),
+            dtNascimento: val('pet-nascimento'), peso: num('pet-peso'),
+        });
+    }
+    function petAtualizar() {
+        apiCall('PUT', `/pets/${val('pet-up-id')}`, {
+            nmPet: val('pet-up-nome'), especie: document.getElementById('pet-up-especie').value,
+            especieOutro: val('pet-up-especie-outro'), raca: val('pet-up-raca'), peso: num('pet-up-peso'),
+        });
+    }
+
+    // ===== eventos =====
+    function eventoAgendar() {
+        apiCall('POST', '/eventos', {
+            idPet: num('ev-idpet'), idTipoEvento: num('ev-idtipo'),
+            idVeterinario: num('ev-idvet'), dtEvento: val('ev-data'), hrEvento: val('ev-hora'), dsObservacao: val('ev-obs'),
+        });
+    }
+    function eventoConcluir() {
+        apiCall('PATCH', `/eventos/${val('ev-concluir-id')}/concluir`, { dsObservacao: val('ev-concluir-obs'), vlCusto: num('ev-concluir-custo') });
+    }
+    function eventoCancelar() {
+        apiCall('PATCH', `/eventos/${val('ev-cancelar-id')}/cancelar`, { motivo: val('ev-cancelar-motivo'), reagendarPara: val('ev-cancelar-nova-data'), horaReagendarPara: val('ev-cancelar-nova-hora') });
+    }
+
+    // ===== prescricoes =====
+    function prescricaoSolicitar() {
+        apiCall('POST', '/prescricoes', {
+            idEvento: num('pr-idevento'), idMedicamento: num('pr-idmed'), dsPosologia: val('pr-posologia'),
+            dtInicio: val('pr-inicio'), dtFim: val('pr-fim'), qtDosesDia: num('pr-doses'),
+        });
+    }
+    function prescricaoLiberar() {
+        apiCall('PATCH', `/prescricoes/${val('pr-liberar-id')}/liberar`, { aprovado: document.getElementById('pr-liberar-aprovado').value === 'true' });
+    }
+
+    // ===== planos =====
+    function planoCriar() {
+        const tipos = (val('pl-tipos') || '').split(',').map(s => s.trim()).filter(Boolean).map(Number);
+        apiCall('POST', '/planos', { idPet: num('pl-idpet'), nrPontosBonus: num('pl-bonus'), idsTipoEvento: tipos });
+    }
+    function planoAgendarItem() {
+        apiCall('PATCH', `/planos/itens/${val('pl-item-id')}/agendar`, { idVeterinario: num('pl-item-vet'), dtEvento: val('pl-item-data'), hrEvento: val('pl-item-hora'), dsObservacao: val('pl-item-obs') });
+    }
+
+    // ===== medicamentos =====
+    function medicamentoCriar() {
+        apiCall('POST', '/medicamentos', { nmMedicamento: val('md-nome'), dsPrincipio: val('md-principio'), vlPrecoRef: num('md-preco') });
+    }
+    function medicamentoAtualizar() {
+        apiCall('PUT', `/medicamentos/${val('md-id')}`, { nmMedicamento: val('md-up-nome'), dsPrincipio: val('md-up-principio'), vlPrecoRef: num('md-up-preco') });
+    }
+
+    // ===== admin =====
+    function adminCriar() {
+        apiCall('POST', '/admins', { nome: val('ad-nome'), email: val('ad-email') });
+    }
+    function veterinarioCadastrar() {
+        apiCall('POST', '/veterinarios', { nome: val('vet-nome'), email: val('vet-email'), idClinica: num('vet-clinica') });
+    }
+    function veterinarioAtualizar() {
+        apiCall('PUT', `/veterinarios/${val('vet-up-id')}`, { nome: val('vet-up-nome'), idClinica: num('vet-up-clinica') });
+    }
+
+    // ===== agenda (disponibilidade / bloqueios) =====
+    function disponibilidadeAdicionar() {
+        apiCall('POST', `/veterinarios/${val('disp-idvet')}/disponibilidade`, {
+            nrDiaSemana: num('disp-dia'), hrInicio: val('disp-inicio'), hrFim: val('disp-fim'),
+        });
+    }
+    function bloqueioAdicionar() {
+        apiCall('POST', `/veterinarios/${val('bloq-idvet')}/bloqueios`, {
+            dtInicio: val('bloq-inicio'), dtFim: val('bloq-fim'), motivo: val('bloq-motivo'),
+        });
+    }
+
+    // ===== recompensas =====
+    function recompensaCriar() {
+        apiCall('POST', '/recompensas', { nome: val('rc-nome'), descricao: val('rc-desc'), custoPontos: num('rc-custo'), tipo: document.getElementById('rc-tipo').value });
+    }
+    function resgateValidar() {
+        apiCall('PATCH', `/recompensas/resgates/${val('rc-validar-id')}/validar`, { aprovado: document.getElementById('rc-validar-aprovado').value === 'true' });
+    }
+
+    // ===== console genérico =====
+    function genericSend() {
+        const metodo = document.getElementById('gen-metodo').value;
+        const path = val('gen-path');
+        const raw = document.getElementById('gen-body').value.trim();
+        let body;
+        if (raw) {
+            try { body = JSON.parse(raw); }
+            catch (e) {
+                document.getElementById('resp-meta').textContent = 'JSON inválido no corpo';
+                document.getElementById('resp-meta').className = 'err';
+                document.getElementById('resp-body').textContent = String(e);
+                return;
+            }
+        }
+        apiCall(metodo, path, body);
+    }
+
+    // estado inicial: deslogado
+    applyRoleVisibility();
+</script>
+</body>
+</html>
