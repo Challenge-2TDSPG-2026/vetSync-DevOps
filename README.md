@@ -6,11 +6,15 @@ Projeto do FIAP Challenge 2026 - parceria Clyvo Vet - Java Advanced, 2º ano ADS
 
 ## Integrantes
 
-| Nome | RM |
-|---|---|
-| Arthur Brito | RM 562085 |
-| Luiz Felipe Flosi | RM 563197 |
-| Pedro Brum | RM 561780 |
+| Nome | RM | Turma |
+|---|---|---|
+| Arthur Brito | RM 562085 | 2TDS |
+| Luiz Felipe Flosi | RM 563197 | 2TDS |
+| Pedro Brum | RM 561780 | 2TDS |
+
+- **Repositório GitHub:** [https://github.com/Challenge-2TDSPG-2026/vetSync-DevOps.git](https://github.com/Challenge-2TDSPG-2026/vetSync-DevOps.git)
+- **Vídeo Demonstrativo no YouTube:** `[INSERIR_LINK_DO_YOUTUBE_AQUI]`
+
 
 ## Problema e solução
 
@@ -113,45 +117,120 @@ O script usa a região `chilecentral`. Se essa região não estiver disponível 
 
 ## Deploy completo no Azure
 
-O vídeo da entrega deve começar pelo clone do repositório e seguir exatamente esta sequência:
+O vídeo da entrega deve começar obrigatoriamente pelo clone do repositório no GitHub e seguir exatamente esta sequência de comandos:
 
 ```bash
-git clone <URL_PUBLICA_DO_REPOSITORIO>
-cd <DIRETORIO_DO_REPOSITORIO>/Backend
+# 1. Clonar o repositório público
+git clone https://github.com/Challenge-2TDSPG-2026/vetSync-DevOps.git
+
+# 2. Acessar o diretório raiz clonado
+cd vetSync-DevOps
+
+# 3. Conceder permissão de execução aos scripts e ao wrapper do Maven
 chmod +x mvnw script/*.sh
 
+# 4. Executar os scripts de provisionamento e deploy em sequência
 ./script/1-system.sh
 ./script/2-sqlserver.sh
 ./script/3-backend-deploy.sh
 ```
 
-Os scripts criam e configuram, via Azure CLI:
+Os scripts criam e configuram, integralmente via Azure CLI (sem containers):
 
-1. Resource Group `rg-vetsync`;
-2. plano Linux `plan-vetsync` com SKU `B1`;
-3. Web App Java 17 `app-vetsync-rm563197`;
-4. Key Vault `kv-vetsync-rm563197` com a senha do Azure SQL;
-5. servidor SQL `sql-server-vetsync-chilecentral` e banco PaaS `db-vetsync`;
-6. regras de firewall para o IP local e para os IPs de saída possíveis do App Service;
-7. identidade gerenciada do Web App e permissão `Key Vault Secrets User`;
-8. Application Settings para conexão JDBC e Flyway;
-9. build, testes automatizados e publicação do JAR com `az webapp deploy --type jar`.
+1. **`1-system.sh`**:
+   - Resource Group `rg-vetsync` na região `chilecentral`;
+   - Azure Key Vault `kv-vetsync-rm563197` com autorização RBAC habilitada;
+   - Permissão `Key Vault Secrets Officer` atribuída ao usuário autenticado na CLI;
+   - App Service Plan Linux `plan-vetsync` com SKU `B1`;
+   - Azure App Service Web App Linux `app-vetsync-rm563197` com runtime `JAVA:17-java17`.
 
-A URL pública do App Service é:
+2. **`2-sqlserver.sh`**:
+   - Geração de senha criptográfica forte via `openssl`;
+   - Armazenamento seguro da senha no Azure Key Vault no segredo `sql-admin-password`;
+   - Servidor PaaS `sql-server-vetsync-chilecentral` com usuário administrador `vetsync-adm`;
+   - Banco de Dados PaaS `db-vetsync` no tier `Basic` (sem container);
+   - Regra de firewall liberando o IP local do desenvolvedor/avaliador (`allow-local-development`);
+   - Regras de firewall para todos os possíveis IPs de saída do App Service (`possibleOutboundIpAddresses`);
+   - Configuração de connection string no Web App.
+
+3. **`3-backend-deploy.sh`**:
+   - Execução do build e dos testes automatizados via `./mvnw clean verify`;
+   - Identidade Gerenciada (System-assigned Managed Identity) habilitada no Web App;
+   - Atribuição do papel `Key Vault Secrets User` à Managed Identity no escopo do Key Vault;
+   - Configuração das Application Settings no Web App com referência segura ao Key Vault (`@Microsoft.KeyVault(...)`) para a senha do banco;
+   - Deploy do pacote JAR executável via `az webapp deploy --type jar`.
+
+A URL pública do App Service na nuvem é:
 
 ```text
 https://app-vetsync-rm563197.azurewebsites.net
 ```
 
-Após o deploy, o primeiro início da aplicação executa as migrations Flyway V1 a V10. A senha do banco é gerada durante a execução de `2-sqlserver.sh`, armazenada no Key Vault e referenciada pelo App Service. Não coloque senhas, tokens, chaves reais ou arquivos `.env` no GitHub, no README ou no vídeo.
+Após a inicialização do App Service, o Flyway aplica automaticamente as migrations de schema `V1` a `V10`.
 
-Para remover o ambiente criado pela entrega:
+Para remover completamente todos os recursos criados após a avaliação:
 
 ```bash
 ./script/x-delete.sh
 ```
 
-Esse comando solicita a exclusão assíncrona de todo o Resource Group `rg-vetsync`, incluindo App Service, Azure SQL e Key Vault.
+---
+
+## Roteiro sequencial para gravação do vídeo (Passo a passo)
+
+O vídeo é a prova da entrega da Sprint 3 (até 80 pontos). Siga este roteiro rigorosamente:
+
+> [!IMPORTANT]
+> **Regras obrigatórias da FIAP para o vídeo:**
+> - Qualidade mínima de **720p**, áudio claro com **explicação por voz** (sem legendas);
+> - É **proibido** utilizar `localhost` (resulta em nota ZERO);
+> - O vídeo deve começar pelo **clone do repositório no GitHub**;
+> - **SEM CORTES** durante a demonstração dos testes de CRUD e da persistência no banco de dados;
+> - Não expor senhas reais, tokens ou arquivos `.env`.
+
+### Sequência recomendada para a gravação:
+
+1. **Abertura (1 minuto):**
+   - Apresente os integrantes do grupo (nome e RM);
+   - Explique brevemente o projeto VetSync e a escolha da **Opção 2: Azure App Service com Banco PaaS (sem containers)**.
+
+2. **Clone e Deploy via CLI (Obrigatório começar assim):**
+   - Com o terminal aberto e já autenticado na Azure CLI (`az login` e `az account show`), execute:
+     ```bash
+     git clone https://github.com/Challenge-2TDSPG-2026/vetSync-DevOps.git
+     cd vetSync-DevOps
+     chmod +x mvnw script/*.sh
+     ```
+   - Execute `./script/1-system.sh`, `./script/2-sqlserver.sh` e `./script/3-backend-deploy.sh`, comentando o que cada script faz enquanto os comandos são executados.
+
+3. **Evidência dos recursos no Portal do Azure:**
+   - Acesse o Portal do Azure e abra o Resource Group `rg-vetsync`;
+   - Mostre os recursos criados:
+     - **App Service Plan:** `plan-vetsync` (Linux, SKU B1);
+     - **Web App:** `app-vetsync-rm563197` (Java 17);
+     - **Azure Key Vault:** `kv-vetsync-rm563197` com o segredo `sql-admin-password`;
+     - **SQL Server:** `sql-server-vetsync-chilecentral`;
+     - **Azure SQL Database:** `db-vetsync` (PaaS);
+   - Mostre a aba *Configuração / Application Settings* do Web App demonstrando a integração com o Key Vault via Managed Identity.
+
+4. **Health Check da Aplicação Pública:**
+   - No navegador, acesse a URL pública:
+     ```text
+     https://app-vetsync-rm563197.azurewebsites.net/actuator/health
+     ```
+   - Mostre o status `UP` comprovando que a API está rodando e conectada ao Azure SQL.
+
+5. **Demonstração do CRUD e Persistência no Azure SQL (SEM CORTES):**
+   - Mantenha duas abas no navegador abertas lado a lado:
+     - **Aba 1 (Aplicação):** Console Web `/index.html` ou Swagger UI `/swagger-ui.html`;
+     - **Aba 2 (Banco de Dados):** Portal do Azure -> Banco `db-vetsync` -> **Editor de Consultas (Query Editor)**;
+   - Realize as operações do CRUD para **duas linhas de conteúdo significativo** nas tabelas CORE (`TB_PET` e `TB_EVENTO_SAUDE`) conforme o roteiro detalhado na seção a seguir;
+   - A cada operação na interface/API, execute o `SELECT` no Editor de Consultas demonstrando a persistência imediata.
+
+6. **Fechamento:**
+   - Mencione o script `./script/x-delete.sh` para exclusão dos recursos da Azure e finalize a apresentação.
+
+---
 
 ## Banco de dados e migrations
 
@@ -161,32 +240,120 @@ Na execução normal, o schema é criado e versionado automaticamente pelo Flywa
 
 As tabelas CORE da demonstração são:
 
-- `TB_PET`, que representa o pet acompanhado;
+- `TB_PET`, que representa o pet acompanhado pelo tutor;
 - `TB_EVENTO_SAUDE`, relacionada a `TB_PET` por `TB_EVENTO_SAUDE.id_pet`.
 
-## CRUD completo e persistência
+---
 
-O CRUD deve ser demonstrado na aplicação e confirmado por `SELECT` diretamente no Azure SQL, sem cortes durante a evidência. Use conteúdo significativo e pelo menos duas linhas relacionadas, por exemplo dois pets de um tutor e um evento de saúde para cada pet.
+## CRUD completo e persistência (Roteiro com 2 linhas)
 
-### Tabela `TB_PET`
+Para atender à exigência de **pelo menos 2 linhas com conteúdo significativo** manipuladas e comprovadas por `SELECT` no Azure SQL, siga o roteiro abaixo.
 
-| Operação | Endpoint | Evidência no banco |
-|---|---|---|
-| Inclusão | `POST /pets` | `SELECT * FROM TB_PET WHERE id_pet = ...` |
-| Consulta | `GET /pets` ou `GET /pets/{id}` | mesmo registro retornado pela API |
-| Alteração | `PUT /pets/{id}` | `SELECT` mostrando o novo nome/peso |
-| Exclusão | `DELETE /pets/{id}` | `SELECT` sem o registro |
+### Como acessar o Editor de Consultas no Azure:
+1. No Portal do Azure, vá em **Resource Groups** -> `rg-vetsync` -> Banco `db-vetsync`;
+2. No menu lateral esquerdo, clique em **Editor de consultas (versão prévia)** (*Query editor*);
+3. Em *Tipo de autorização*, escolha **Autenticação do SQL Server**;
+4. Usuário: `vetsync-adm`;
+5. Senha: A senha gerada no deploy (para consultar no terminal: `az keyvault secret show --vault-name kv-vetsync-rm563197 --name sql-admin-password --query value -o tsv`);
+6. Clique em **OK**.
 
-### Tabela relacionada `TB_EVENTO_SAUDE`
+---
 
-| Operação | Endpoint | Evidência no banco |
-|---|---|---|
-| Inclusão | `POST /eventos` | `SELECT * FROM TB_EVENTO_SAUDE WHERE id_evento = ...` |
-| Consulta | `GET /eventos` ou `GET /eventos/{id}` | evento retornado pela API |
-| Alteração | `PATCH /eventos/{id}/concluir` | `SELECT` mostrando status `CONCLUIDO`, observação e custo |
-| Exclusão | `DELETE /eventos/{id}` | `SELECT` sem o registro |
+### Dados das 2 linhas de negócio para o teste:
 
-O tutor autenticado só pode manipular seus próprios pets e eventos. O evento precisa referenciar um pet existente, um tipo de evento existente e um veterinário existente. Assim, as duas tabelas demonstram CRUD completo, relacionamento e persistência real em banco de nuvem.
+* **Tutor de teste:** Login na aplicação com `maria@email.com` / `senha123` (ou cadastro via `/auth/registrar`).
+* **Linha 1:**
+  - Pet: `Thor` | Espécie: `Cão` | Raça: `Golden Retriever` | Sexo: `M` | Peso: `32.50` kg
+  - Evento: `Consulta de rotina` | Veterinário: `Dra. Ana Costa` | Status: `AGENDADO`
+* **Linha 2:**
+  - Pet: `Luna` | Espécie: `Gato` | Raça: `Siamês` | Sexo: `F` | Peso: `4.20` kg
+  - Evento: `Vacina` | Veterinário: `Dra. Ana Costa` | Status: `AGENDADO`
+
+---
+
+### 1. Inclusão (Create)
+Cadastre os dois pets e agende um evento para cada um via Console Web (`/index.html`), Swagger UI ou API:
+
+* **Pet 1:** `POST /pets` com `nmPet: "Thor"`, `especie: "CAO"`, `raca: "Golden Retriever"`, `peso: 32.50`, `sexo: "M"`, `dtNascimento: "2023-01-15"`
+* **Pet 2:** `POST /pets` com `nmPet: "Luna"`, `especie: "GATO"`, `raca: "Siamês"`, `peso: 4.20`, `sexo: "F"`, `dtNascimento: "2022-06-20"`
+* **Evento 1:** `POST /eventos` vinculando ao pet `Thor` com tipo de evento `Consulta de rotina`
+* **Evento 2:** `POST /eventos` vinculando ao pet `Luna` com tipo de evento `Vacina`
+
+**Evidência no Azure SQL (rodar no Query Editor):**
+```sql
+-- Evidência de inclusão das 2 linhas de Pet:
+SELECT id_pet, nm_pet, nr_peso_kg, ds_sexo, id_tutor 
+FROM TB_PET 
+WHERE nm_pet IN ('Thor', 'Luna');
+
+-- Evidência de inclusão dos 2 Eventos relacionados:
+SELECT id_evento, id_pet, id_tipo_evento, id_veterinario, ds_status, dt_evento, hr_evento 
+FROM TB_EVENTO_SAUDE;
+```
+
+---
+
+### 2. Consulta (Read)
+Consulte os registros na aplicação e confira com os dados retornados no banco:
+
+* **Pela Aplicação:**
+  - `GET /pets` (ou aba "Meus pets" na console web) -> lista `Thor` e `Luna`;
+  - `GET /eventos` (ou aba "Meus eventos") -> lista os eventos agendados de cada pet.
+* **No Banco:** Os registros batem exatamente com o resultado da consulta `SELECT` acima.
+
+---
+
+### 3. Alteração (Update)
+Altere um dado do Pet 1 e conclua o Evento 1:
+
+* **Alterar Pet 1:** `PUT /pets/{idPet1}` -> atualizar o peso de `32.50` para `34.00` kg (ex: ganho de peso pós-tratamento).
+* **Concluir Evento 1:** `PATCH /eventos/{idEvento1}/concluir` -> com `vlCusto: 150.00` e `dsObservacao: "Consulta concluída, animal saudável e vacinas em dia."`.
+
+**Evidência no Azure SQL (rodar no Query Editor):**
+```sql
+-- Evidência da alteração do Pet (novo peso persistido):
+SELECT id_pet, nm_pet, nr_peso_kg 
+FROM TB_PET 
+WHERE nm_pet = 'Thor';
+
+-- Evidência da alteração do Evento (status CONCLUIDO, custo e observação):
+SELECT id_evento, id_pet, ds_status, vl_custo, ds_observacao 
+FROM TB_EVENTO_SAUDE 
+WHERE id_evento = 1; -- (ou ID do evento de Thor)
+```
+
+---
+
+### 4. Exclusão (Delete)
+Exclua o Evento 2 e em seguida o Pet 2 para demonstrar o ciclo de exclusão com integridade referencial:
+
+* **Excluir Evento 2:** `DELETE /eventos/{idEvento2}`
+* **Excluir Pet 2:** `DELETE /pets/{idPet2}`
+
+**Evidência no Azure SQL (rodar no Query Editor):**
+```sql
+-- Evidência da exclusão do Evento 2 (retorna 0 linhas):
+SELECT id_evento, ds_status 
+FROM TB_EVENTO_SAUDE 
+WHERE id_pet = (SELECT id_pet FROM TB_PET WHERE nm_pet = 'Luna');
+
+-- Evidência da exclusão do Pet 2 (retorna 0 linhas):
+SELECT id_pet, nm_pet 
+FROM TB_PET 
+WHERE nm_pet = 'Luna';
+
+-- Confirmação final das tabelas mantendo apenas o Pet 1 e seu Evento 1 concluído:
+SELECT id_pet, nm_pet, nr_peso_kg FROM TB_PET;
+SELECT id_evento, id_pet, ds_status, vl_custo FROM TB_EVENTO_SAUDE;
+```
+
+Com esta sequência, demonstra-se:
+1. Inclusão de 2 linhas significativas em ambas as tabelas;
+2. Consulta de ambas as linhas via API e via SQL;
+3. Atualização com persistência comprovada no banco;
+4. Exclusão com integridade referencial demonstrada;
+5. Persistência real em banco PaaS na nuvem, sem uso de localhost.
+
 
 ## Configuração
 
@@ -272,4 +439,34 @@ O comando executa build, testes e relatório JaCoCo. Para gerar o relatório dir
 
 Os testes usam H2 em memória apenas como apoio automatizado. Isso não substitui o teste de integração, a persistência e os `SELECT`s no Azure SQL exigidos na demonstração.
 
+---
+
+## Entrega obrigatória da Sprint 3 (Orientações do PDF da FIAP)
+
+Conforme os critérios de avaliação e penalidades da disciplina (DevOps Tools & Cloud Computing):
+
+> [!CAUTION]
+> **Formato restrito do arquivo PDF de entrega:**
+> - O grupo deve submeter no portal da FIAP um **único arquivo PDF**;
+> - O conteúdo do PDF deve conter **APENAS e EXCLUSIVAMENTE**:
+>   1. **Nome completo e RM** de todos os integrantes do grupo;
+>   2. **Link do repositório** público no GitHub (`https://github.com/Challenge-2TDSPG-2026/vetSync-DevOps.git`);
+>   3. **Link do vídeo** demonstrativo no YouTube (não-listado ou público);
+> - **Atenção:** Não coloque mais nada no PDF. Todo o detalhamento técnico e instruções devem permanecer aqui no repositório GitHub e no README.
+> - *Penalidade no edital se faltar o PDF com esses dados: -30 pontos.*
+
+### Checklist final da equipe antes do envio:
+- [x] Código-fonte e scripts versionados no GitHub
+- [x] Nenhuma credencial ou dado sensível exposto em código ou `.env`
+- [x] Scripts Azure CLI testados (`1-system.sh`, `2-sqlserver.sh`, `3-backend-deploy.sh`)
+- [x] Aplicação provisionada em Azure App Service e Azure SQL PaaS (sem containers)
+- [x] Diagrama de arquitetura oficial Azure incluído no repositório
+- [x] Arquivo DDL [`script/Database/script_bd.sql`](script/Database/script_bd.sql) versionado com comentários
+- [ ] Vídeo gravado sem cortes no CRUD/SELECT, áudio com voz clara, qualidade >= 720p
+- [ ] Vídeo publicado no YouTube (público ou não-listado)
+- [ ] PDF gerado e validado com os 3 itens obrigatórios
+
+---
+
 *VetSync - FIAP 2026 | Challenge Clyvo Vet | 2º Ano ADS*
+
