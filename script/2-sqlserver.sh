@@ -63,3 +63,9 @@ az webapp config connection-string set \
     --name "$APP_NAME" \
     --connection-string-type SQLAzure \
     --settings DefaultConnection="$CONNECTION_STRING"
+
+az webapp log config \
+  --resource-group rg-vetsync \
+  --name app-vetsync-rm563197 \
+  --application-logging filesystem \
+  --level information
