@@ -18,7 +18,8 @@ az provider register --namespace Microsoft.Sql --wait
 az keyvault secret set \
     --vault-name "$KEYVAULT_NAME" \
     --name "sql-admin-password" \
-    --value "$SQL_ADMIN_PASSWORD"
+    --value "$SQL_ADMIN_PASSWORD" \
+    --output none
 
 az sql server create \
     --resource-group "$GROUP" \
