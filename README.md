@@ -115,23 +115,49 @@ O diagrama abaixo apresenta as personas, os componentes da aplicação, os recur
 
 O script usa a região `chilecentral`. Se essa região não estiver disponível na assinatura, altere a variável `LOCATION` nos scripts antes da execução e mantenha a mesma região nos recursos.
 
-## Deploy completo no Azure
+## Como Executar o Projeto (Deploy no Azure)
 
-O vídeo da entrega deve começar obrigatoriamente pelo clone do repositório no GitHub e seguir exatamente esta sequência de comandos:
+Siga rigorosamente o passo a passo abaixo para reproduzir a infraestrutura e o deploy da aplicação em nuvem:
 
+### 1. Clonar o repositório
 ```bash
-# 1. Clonar o repositório público
 git clone https://github.com/Challenge-2TDSPG-2026/vetSync-DevOps.git
+```
 
-# 2. Acessar o diretório raiz clonado
+### 2. Entrar na pasta do projeto
+```bash
 cd vetSync-DevOps
+```
 
-# 3. Conceder permissão de execução aos scripts e ao wrapper do Maven
+### 3. Conceder permissão de execução (`chmod`) nos scripts
+```bash
 chmod +x mvnw script/*.sh
+```
 
-# 4. Executar os scripts de provisionamento e deploy em sequência
+### 4. Execução do 1º e 2º script
+Execute os dois primeiros scripts para provisionar o Resource Group, Key Vault, App Service, SQL Server, banco de dados `db-vetsync` e as regras de firewall:
+```bash
 ./script/1-system.sh
 ./script/2-sqlserver.sh
+```
+
+### 5. Inserir o `.sql` no Query Editor (Azure Portal)
+Para garantir a estrutura de tabelas inicial do banco de dados na nuvem antes do deploy:
+1. Acesse o [Portal do Azure](https://portal.azure.com);
+2. Navegue até o Resource Group `rg-vetsync` -> Banco de dados SQL `db-vetsync`;
+3. No menu lateral esquerdo, clique em **Editor de consultas (versão prévia)** / **Query editor**;
+4. Autentique-se com:
+   - **Tipo de autorização:** Autenticação do SQL Server
+   - **Login:** `vetsync-adm`
+   - **Senha:** consulte a senha gerada no Key Vault com o comando:
+     ```bash
+     az keyvault secret show --vault-name kv-vetsync-rm563197 --name sql-admin-password --query value -o tsv
+     ```
+5. Abra o arquivo [`script/Database/script_bd.sql`](script/Database/script_bd.sql), copie todo o seu conteúdo DDL, cole no editor e clique em **Executar (Run)** para criar as tabelas e constraints.
+
+### 6. Executar o 3º script
+Com o banco preparado, execute o script de validação de testes, configuração de identidade gerenciada e deploy do artefato:
+```bash
 ./script/3-backend-deploy.sh
 ```
 
@@ -197,11 +223,25 @@ O vídeo é a prova da entrega da Sprint 3 (até 80 pontos). Siga este roteiro r
 2. **Clone e Deploy via CLI (Obrigatório começar assim):**
    - Com o terminal aberto e já autenticado na Azure CLI (`az login` e `az account show`), execute:
      ```bash
+     # 1. Clone
      git clone https://github.com/Challenge-2TDSPG-2026/vetSync-DevOps.git
+
+     # 2. Entrar na pasta
      cd vetSync-DevOps
+
+     # 3. chmod nos scripts
      chmod +x mvnw script/*.sh
+
+     # 4. Rodagem do 1º e 2º script
+     ./script/1-system.sh
+     ./script/2-sqlserver.sh
      ```
-   - Execute `./script/1-system.sh`, `./script/2-sqlserver.sh` e `./script/3-backend-deploy.sh`, comentando o que cada script faz enquanto os comandos são executados.
+   - **5. Inserir script_bd.sql no Query Editor:** Acesse o Portal do Azure -> Banco `db-vetsync` -> Query editor, faça login como `vetsync-adm` com a senha do Key Vault, cole o DDL de `script/Database/script_bd.sql` e execute para provisionar o schema.
+   - **6. Rodar o 3º script:**
+     ```bash
+     ./script/3-backend-deploy.sh
+     ```
+     Comente o que cada script faz enquanto os comandos são executados.
 
 3. **Evidência dos recursos no Portal do Azure:**
    - Acesse o Portal do Azure e abra o Resource Group `rg-vetsync`;
